@@ -1,51 +1,41 @@
 import {
-  QueryClient,
-  useMutation,
   UseMutationOptions,
-  useQuery,
-  useQueryClient,
+  UseMutationResult,
   UseQueryOptions,
+  UseQueryResult,
+  useMutation,
+  useQuery,
 } from "@tanstack/react-query";
-import { MutationFunctionType, QueryFunctionType } from "../../../types/api";
+import { AxiosError } from "axios";
 
-export function UseRequestProcessor(): {
-  query: QueryFunctionType;
-  mutate: MutationFunctionType;
-  queryClient: QueryClient;
-} {
-  const queryClient = useQueryClient();
-
-  function query(
-    queryKey: UseQueryOptions["queryKey"],
-    queryFn: UseQueryOptions["queryFn"],
-    options: Omit<UseQueryOptions, "queryFn" | "queryKey"> = {},
-  ) {
-    return useQuery({
+// 简化的请求处理器，直接返回结果
+export const UseRequestProcessor = () => {
+  const query = <TQueryFnData, TError = AxiosError, TData = TQueryFnData>(
+    queryKey: unknown[],
+    queryFn: () => Promise<TQueryFnData>,
+    options?: UseQueryOptions<TQueryFnData, TError, TData>,
+  ): UseQueryResult<TData, TError> => {
+    return useQuery<TQueryFnData, TError, TData>({
       queryKey,
       queryFn,
-      retry: 5,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       ...options,
     });
-  }
+  };
 
-  function mutate(
-    mutationKey: UseMutationOptions["mutationKey"],
-    mutationFn: UseMutationOptions["mutationFn"],
-    options: Omit<UseMutationOptions, "mutationFn" | "mutationKey"> = {},
-  ) {
-    return useMutation({
+  const mutate = <TData, TVariables, TError = AxiosError, TContext = unknown>(
+    mutationKey: unknown[],
+    mutationFn: (variables: TVariables) => Promise<TData>,
+    options?: UseMutationOptions<TData, TError, TVariables, TContext>,
+  ): UseMutationResult<TData, TError, TVariables, TContext> => {
+    return useMutation<TData, TError, TVariables, TContext>({
       mutationKey,
       mutationFn,
-      onSettled: (data, error, variables, context) => {
-        queryClient.invalidateQueries({ queryKey: mutationKey });
-        options.onSettled && options.onSettled(data, error, variables, context);
-      },
       ...options,
-      retry: options.retry ?? 3,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     });
-  }
+  };
 
-  return { query, mutate, queryClient };
-}
+  return {
+    query,
+    mutate,
+  };
+};

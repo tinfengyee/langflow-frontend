@@ -80,7 +80,7 @@ export default function FlowPage({ view }: { view?: boolean }): JSX.Element {
     } else if (changesNotSaved) {
       if (blocker.proceed) blocker.proceed();
     } else {
-      navigate("/all");
+      navigate("/");
     }
   };
 
@@ -101,24 +101,41 @@ export default function FlowPage({ view }: { view?: boolean }): JSX.Element {
 
   // Set flow tab id
   useEffect(() => {
-    const awaitgetTypes = async () => {
-      if (flows && currentFlowId === "") {
-        const isAnExistingFlow = flows.find((flow) => flow.id === id);
-
-        if (!isAnExistingFlow) {
-          navigate("/all");
-          return;
+    const loadFlow = async () => {
+      // 如果有指定ID，尝试加载这个ID的流程
+      if (id) {
+        try {
+          const flow = await getFlow({ id });
+          setCurrentFlow(flow);
+        } catch (error) {
+          console.error("Failed to load flow:", error);
+          // 如果加载失败，可以创建一个新的空流程
+          setCurrentFlow({
+            name: "New Flow",
+            description: "",
+            data: {
+              nodes: [],
+              edges: [],
+            },
+            id: id || "default-flow",
+          });
         }
-
-        const isAnExistingFlowId = isAnExistingFlow.id;
-
-        flowToCanvas
-          ? setCurrentFlow(flowToCanvas)
-          : getFlowToAddToCanvas(isAnExistingFlowId);
+      } else {
+        // 如果没有ID，创建一个新的空流程
+        setCurrentFlow({
+          name: "New Flow",
+          description: "",
+          data: {
+            nodes: [],
+            edges: [],
+          },
+          id: "default-flow",
+        });
       }
     };
-    awaitgetTypes();
-  }, [id, flows, currentFlowId, flowToCanvas]);
+
+    loadFlow();
+  }, [id]);
 
   useEffect(() => {
     setOnFlowPage(true);
@@ -149,11 +166,6 @@ export default function FlowPage({ view }: { view?: boolean }): JSX.Element {
       }
     }
   }, [blocker.state, isBuilding]);
-
-  const getFlowToAddToCanvas = async (id: string) => {
-    const flow = await getFlow({ id: id });
-    setCurrentFlow(flow);
-  };
 
   const isMobile = useIsMobile();
 
